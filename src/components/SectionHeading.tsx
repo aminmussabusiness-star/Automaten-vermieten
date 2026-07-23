@@ -19,7 +19,7 @@ export function SectionHeading({
       transition={{ duration: 0.6, ease: "easeOut" }}
       className={align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}
     >
-      <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.38em] text-amber-200/80">
+      <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-[11px] uppercase tracking-[0.28em] text-amber-200/80 md:px-4 md:py-2 md:text-xs md:tracking-[0.38em]">
         {eyebrow}
       </span>
     </motion.div>

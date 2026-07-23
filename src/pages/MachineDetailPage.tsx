@@ -5,13 +5,16 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { SectionHeading } from "@/components/SectionHeading";
 import { findMachineBySlug } from "@/data/siteContent";
 import { buildMailtoLink } from "@/utils/inquiry";
+import { getMachinePreviewImage } from "@/utils/machinePreview";
 import {
   calculateMachineDeposit,
+  calculateMachinePaymentAmount,
   calculateMachineMonthlyPrice,
   formatEuro,
-  gamePackages,
+  getPaymentOption,
+  paymentOptions,
   rentalDurations,
-  type GamePackageId,
+  type PaymentOptionId,
   type RentalDurationId,
 } from "@/utils/pricing";
 
@@ -19,7 +22,8 @@ export default function MachineDetailPage() {
   const { machineId } = useParams();
   const machine = findMachineBySlug(machineId);
   const [selectedDurationId, setSelectedDurationId] = useState<RentalDurationId>("12-monate");
-  const [selectedPackageId, setSelectedPackageId] = useState<GamePackageId>("basis");
+  const [selectedPaymentOptionId, setSelectedPaymentOptionId] =
+    useState<PaymentOptionId>("monatlich");
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -34,14 +38,17 @@ export default function MachineDetailPage() {
 
   const selectedDuration =
     rentalDurations.find((duration) => duration.id === selectedDurationId) ?? rentalDurations[0];
-  const selectedPackage =
-    gamePackages.find((entry) => entry.id === selectedPackageId) ?? gamePackages[0];
-  const calculatedMonthlyPrice = calculateMachineMonthlyPrice(
+  const selectedPaymentOption = getPaymentOption(selectedPaymentOptionId);
+  const calculatedMonthlyPrice = calculateMachineMonthlyPrice(machine, selectedDurationId);
+  const calculatedPaymentAmount = calculateMachinePaymentAmount(
     machine,
     selectedDurationId,
-    selectedPackageId,
+    selectedPaymentOptionId,
   );
   const calculatedDeposit = calculateMachineDeposit();
+  const detailImage = getMachinePreviewImage(machine.slug, machine.image);
+  const usesCustomDetailImage = detailImage !== machine.image;
+  const isAdjustedDetailImage = detailImage === "/merkurmulti.png";
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -59,8 +66,9 @@ export default function MachineDetailPage() {
       `E-Mail: ${formData.email}`,
       `Telefon: ${formData.phone}`,
       `Mietlaufzeit: ${selectedDuration.label}`,
-      `Spielpaket: ${selectedPackage.label}`,
+      `Zahlungsweise: ${selectedPaymentOption.label}`,
       `Monatliche Miete: ${formatEuro(calculatedMonthlyPrice)}`,
+      `${selectedPaymentOption.priceLabel}: ${formatEuro(calculatedPaymentAmount)}`,
       `Kaution: ${formatEuro(calculatedDeposit)}`,
     ].join("\n");
 
@@ -87,9 +95,15 @@ export default function MachineDetailPage() {
         <div className="mt-8 grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="overflow-hidden rounded-[30px] border border-white/10">
             <img
-              src={machine.image}
+              src={detailImage}
               alt={machine.name}
-              className="h-full min-h-[440px] w-full object-cover"
+              className={
+                usesCustomDetailImage
+                  ? isAdjustedDetailImage
+                    ? "h-full min-h-[440px] w-full translate-y-6 scale-[1.04] bg-[#0f0f0f] object-contain p-0"
+                    : "h-full min-h-[440px] w-full bg-[#0f0f0f] object-contain p-6"
+                  : "h-full min-h-[440px] w-full object-cover"
+              }
             />
           </div>
 
@@ -109,7 +123,7 @@ export default function MachineDetailPage() {
                     Mietpreis berechnen
                   </p>
                   <p className="mt-3 font-display text-3xl text-stone-50">
-                    Laufzeit und Spielpaket direkt waehlen
+                    Laufzeit und Zahlungsweise direkt waehlen
                   </p>
                 </div>
 
@@ -134,26 +148,28 @@ export default function MachineDetailPage() {
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-stone-500">Spielpaket</p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-3">
-                    {gamePackages.map((entry) => (
+                  <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
+                    Zahlungsweise
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {paymentOptions.map((entry) => (
                       <button
                         key={entry.id}
                         type="button"
-                        onClick={() => setSelectedPackageId(entry.id)}
-                        className={`rounded-[22px] border p-4 text-left transition ${
-                          selectedPackageId === entry.id
-                            ? "border-amber-300/30 bg-amber-300/10"
-                            : "border-white/10 bg-white/[0.04] hover:bg-white/[0.06]"
+                        onClick={() => setSelectedPaymentOptionId(entry.id)}
+                        className={`rounded-full px-4 py-3 text-sm transition ${
+                          selectedPaymentOptionId === entry.id
+                            ? "bg-amber-300 text-neutral-950"
+                            : "border border-white/10 bg-white/[0.04] text-stone-200 hover:bg-white/[0.08]"
                         }`}
                       >
-                        <p className="font-medium text-stone-50">{entry.label}</p>
-                        <p className="mt-2 text-sm leading-6 text-stone-300/76">
-                          {entry.description}
-                        </p>
+                        {entry.label}
                       </button>
                     ))}
                   </div>
+                  <p className="mt-3 text-sm text-stone-300/76">
+                    Bei jaehrlicher Zahlung ist 1 Monat kostenlos.
+                  </p>
                 </div>
               </div>
             </div>
@@ -162,9 +178,9 @@ export default function MachineDetailPage() {
               <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                 <BadgeEuro className="h-5 w-5 text-amber-200" />
                 <p className="mt-4 text-xs uppercase tracking-[0.24em] text-stone-500">
-                  Monatliche Miete
+                  {selectedPaymentOption.priceLabel}
                 </p>
-                <p className="mt-2 text-sm text-stone-100">{formatEuro(calculatedMonthlyPrice)}</p>
+                <p className="mt-2 text-sm text-stone-100">{formatEuro(calculatedPaymentAmount)}</p>
               </div>
               <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                 <HandCoins className="h-5 w-5 text-amber-200" />

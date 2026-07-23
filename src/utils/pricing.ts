@@ -5,60 +5,55 @@ export const rentalDurations = [
     id: "12-monate",
     label: "12 Monate",
     monthlyFactor: 1,
-    depositAdjustment: 0,
   },
   {
     id: "24-monate",
     label: "24 Monate",
     monthlyFactor: 0.9,
-    depositAdjustment: 0,
   },
 ] as const;
 
-export const gamePackages = [
+export const paymentOptions = [
   {
-    id: "basis",
-    label: "Basis",
-    description: "Grundausstattung mit klassischem Spielpaket.",
-    monthlySurcharge: 0,
-    depositSurcharge: 0,
+    id: "monatlich",
+    label: "Monatliche Zahlung",
+    priceLabel: "Monatliche Zahlung",
+    multiplier: 1,
   },
   {
-    id: "plus",
-    label: "Plus",
-    description: "Erweitertes Spielpaket mit mehr Auswahl.",
-    monthlySurcharge: 49,
-    depositSurcharge: 120,
-  },
-  {
-    id: "premium",
-    label: "Premium",
-    description: "Volles Paket fuer maximale Ausstattung.",
-    monthlySurcharge: 99,
-    depositSurcharge: 220,
+    id: "jaehrlich",
+    label: "Jaehrliche Zahlung",
+    priceLabel: "Jaehrliche Zahlung",
+    multiplier: 11,
   },
 ] as const;
 
 export type RentalDurationId = (typeof rentalDurations)[number]["id"];
-export type GamePackageId = (typeof gamePackages)[number]["id"];
+export type PaymentOptionId = (typeof paymentOptions)[number]["id"];
 
 export function getRentalDuration(durationId: RentalDurationId) {
   return rentalDurations.find((duration) => duration.id === durationId) ?? rentalDurations[0];
 }
 
-export function getGamePackage(packageId: GamePackageId) {
-  return gamePackages.find((entry) => entry.id === packageId) ?? gamePackages[0];
+export function getPaymentOption(paymentOptionId: PaymentOptionId) {
+  return paymentOptions.find((entry) => entry.id === paymentOptionId) ?? paymentOptions[0];
 }
 
-export function calculateMachineMonthlyPrice(
+export function calculateMachineMonthlyPrice(machine: SlotMachine, durationId: RentalDurationId) {
+  const duration = getRentalDuration(durationId);
+
+  return Math.round(machine.baseMonthlyPrice * duration.monthlyFactor);
+}
+
+export function calculateMachinePaymentAmount(
   machine: SlotMachine,
   durationId: RentalDurationId,
-  packageId: GamePackageId,
+  paymentOptionId: PaymentOptionId,
 ) {
-  const duration = getRentalDuration(durationId);
-  const selectedPackage = getGamePackage(packageId);
+  const paymentOption = getPaymentOption(paymentOptionId);
+  const monthlyPrice = calculateMachineMonthlyPrice(machine, durationId);
 
-  return Math.round((machine.baseMonthlyPrice + selectedPackage.monthlySurcharge) * duration.monthlyFactor);
+  return Math.round(monthlyPrice * paymentOption.multiplier);
 }
 
 export function calculateMachineDeposit() {
